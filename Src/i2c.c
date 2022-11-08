@@ -118,6 +118,7 @@ uint8_t* i2c_master_read(uint8_t* buffer, uint8_t length, uint8_t register_addr,
 			LL_I2C_TransmitData8(I2C1, register_addr);
 		}
 	}
+
 	LL_I2C_ClearFlag_STOP(I2C1);
 	while(LL_I2C_IsActiveFlag_STOP(I2C1)){}
 

@@ -2,8 +2,8 @@
 
 // barometer
 
-#define LPS25HB_DEVICE_ADDRESS_0 0xB8
-#define LPS25HB_DEVICE_ADDRESS_1 0xBA
+#define LPS25HB_DEVICE_ADDRESS_0 0xB9
+#define LPS25HB_DEVICE_ADDRESS_1 0xBB
 
 #define LPS25HB_WHO_AM_I_VALUE 0xBD
 #define LPS25HB_WHO_AM_I_ADDRES 0x0F
@@ -17,7 +17,7 @@
 
 uint8_t LPS25HB_init(void);
 uint8_t LPS25HB_read_byte(uint8_t reg_address);
-uint8_t LPS25HB_write_byte(uint8_t reg_address, uint8_t value);
+uint8_t LPS25HB_power_up(void);
 
+void LPS25HB_write_byte(uint8_t reg_address, uint8_t value);
 void LPS25HB_get_pressure();
-void LPS25HB_power_up(void);

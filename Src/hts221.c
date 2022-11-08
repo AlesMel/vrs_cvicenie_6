@@ -13,12 +13,15 @@ uint8_t HTS221_read_byte(uint8_t reg_address) {
 	return *(i2c_master_read(&read_data, 1, reg_address, hts221_slave_address, 0));
 }
 
-void HTS221_power_up(void) {
-	uint8_t status = HTS221_read_byte(HTS221_CTRL_REG1);
-	status |= (1<<7); // power on
-	status |= (1<<0); // 1kHz
-	HTS221_write_byte(HTS221_CTRL_REG1, status);
-
+uint8_t HTS221_power_up(void) {
+	uint8_t reg_status = HTS221_read_byte(HTS221_CTRL_REG1);
+	reg_status |= (1<<7); // power on
+	reg_status |= (1<<0); // 1kHz
+	HTS221_write_byte(HTS221_CTRL_REG1, reg_status);
+	if (reg_status != HTS221_read_byte(HTS221_CTRL_REG1)) {
+		return 0;
+	}
+	return 0;
 }
 
 uint8_t HTS221_init(void) {
