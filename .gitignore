@@ -1,2 +1,5 @@
 .settings/
 Debug/
+*.cfg
+*.ioc
+*.launch
