@@ -8,10 +8,15 @@ void HTS221_write_byte(uint8_t reg_addr, uint8_t value)
 	i2c_master_write(value, reg_addr, hts221_slave_address, 0);
 }
 
+void HTS221_read_byte_array(uint8_t* read_data, uint8_t reg_address, uint8_t length) {
+	i2c_master_read(read_data, length, reg_address, hts221_slave_address, 0);
+}
+
 uint8_t HTS221_read_byte(uint8_t reg_address) {
 	uint8_t read_data = 0;
 	return *(i2c_master_read(&read_data, 1, reg_address, hts221_slave_address, 0));
 }
+
 
 uint8_t HTS221_power_up(void) {
 	uint8_t reg_status = HTS221_read_byte(HTS221_CTRL_REG1);
@@ -39,5 +44,14 @@ uint8_t HTS221_init(void) {
 	} else {
 		status = 0;
 	}
+}
+
+float HTS221_get_temperature(){
+	uint8_t temp_out_l = HTS221_read_byte(HTS221_TEMP_OUT_L);
+	uint8_t temp_out_h = HTS221_read_byte(HTS221_TEMP_OUT_H);
+	return (temp_out_l + temp_out_h) / 100;
+}
+
+float HTS221_get_humidity(){
 
 }
