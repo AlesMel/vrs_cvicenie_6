@@ -35,9 +35,9 @@
 
 uint8_t temp = 0;
 float mag[3], acc[3];
-float pressure;
-float temperature;
-float humidity;
+float pressure = 0.0;
+float temperature = 0.0;
+float humidity = 0.0;
 char formated_text[128];
 
 void SystemClock_Config(void);
@@ -64,10 +64,9 @@ int main(void)
   {
 	  pressure = LPS25HB_get_pressure();
 	  temperature = HTS221_get_temperature();
-//	  humidity = HTS221_get_humidity();
-
+	  humidity = HTS221_get_humidity();
 	  memset(formated_text, '\0', sizeof(formated_text));
-	  sprintf(formated_text, "%5.4f, %3.4f\r", pressure, temperature);
+	  sprintf(formated_text, "%5.4f, %3.4f %2.2f %2.2f\r", pressure, temperature, humidity);
 	  USART2_PutBuffer((uint8_t*)formated_text, strlen(formated_text));
 	  LL_mDelay(10);
   }
