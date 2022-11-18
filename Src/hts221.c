@@ -83,9 +83,9 @@ float HTS221_get_temperature(){
 
 float HTS221_get_humidity(){
 	// read 2 bytes from HTS221_T0_OUT_L make it 16 bit number
-	int8_t h0_t0_array[2] = {0};
-	int8_t h1_t0_array[2] = {0};
-	int8_t h_out_array[2] = {0};
+	uint8_t h0_t0_array[2] = {0};
+	uint8_t h1_t0_array[2] = {0};
+	uint8_t h_out_array[2] = {0};
 	uint8_t h0_rh_x2 = HTS221_read_byte(HTS221_H0_RH_x2);
 	uint8_t h1_rh_x2 = HTS221_read_byte(HTS221_H1_RH_x2);
 
@@ -102,10 +102,9 @@ float HTS221_get_humidity(){
 	int16_t h_out = HTS221_read_byte(HTS221_HUMIDITY_OUT_L);
 	h_out |= (HTS221_read_byte(HTS221_HUMIDITY_OUT_H) << 8);
 
-	float humidity;
 	float h0 = h0_rh_x2 / 2.0;
 	float h1 = h1_rh_x2 / 2.0;
-	humidity = (h0 + (h_out - h0_t0_out) * (h1 - h0) / (h1_t0_out - h0_t0_out));
+	float humidity = (h0 + (h_out - h0_t0_out) * (h1 - h0) / (h1_t0_out - h0_t0_out));
 
-//	return humidity;
+	return humidity;
 }

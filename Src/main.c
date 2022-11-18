@@ -30,21 +30,57 @@
 #include "stdio.h"
 #include "string.h"
 #include "dma.h"
+#include "math.h"
 
 #define CHAR_BUFF_SIZE	30
-
-uint8_t temp = 0;
-float mag[3], acc[3];
-float pressure = 0.0;
-float temperature = 0.0;
-float humidity = 0.0;
-char formated_text[128];
+#define LPF_BAR_ALPHA 0.25f /* Filter coefficient */
+#define INITIAL_PRESSURE_SAMPLE_COUNT 20
+#define DENSITY_AIR_KG_M3 1.225f
+#define GRAVITY_EARTH_MPS2 9.81f
+#define PRESSURE_SEA_LEVEL_PA 101325.0f
 
 void SystemClock_Config(void);
 
+uint8_t temp = 0;
+char formated_text[128];
 
-int main(void)
-{
+float current_temperature = 0.0f;
+float current_humidity = 0.0f;
+
+float current_pressure = 0.0f; /* procPressure_Pa current pressure (low-pass filtered) */
+float ref_avg_pressure = 0.0f; /* procInitPressure_Pa initial average pressure */
+float raw_pressure = 0.0f; /*rawPressure_Pa */
+
+float estimated_altitude = 0.0f;
+float relative_altitude = 0.0f;
+
+float data_rate = 0.0f;
+uint8_t data_count = 0;
+uint8_t init_pressure_calculation = 0;
+
+// low-pass filter
+void process_pressure(float pressure) {
+	raw_pressure = pressure;
+
+	/* Low-pass filter 'raw' pressure measurement */
+	current_pressure = LPF_BAR_ALPHA * current_pressure + (1.0f - LPF_BAR_ALPHA) * pressure;
+
+	/* During initialization process, compute average pressure */
+	if (!init_pressure_calculation) {
+		if (data_count < INITIAL_PRESSURE_SAMPLE_COUNT) {
+			ref_avg_pressure += pressure;
+			data_count++;
+		} else {
+			ref_avg_pressure /= ((float) INITIAL_PRESSURE_SAMPLE_COUNT);
+			init_pressure_calculation = 1;
+		}
+	} else {
+		// times 1000 because of cm to m
+		relative_altitude = (-(current_pressure - ref_avg_pressure) / (DENSITY_AIR_KG_M3 * GRAVITY_EARTH_MPS2)) * 100;
+	}
+}
+
+int main(void) {
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
@@ -60,16 +96,28 @@ int main(void)
   LPS25HB_init();
   HTS221_init();
 
-  while (1)
-  {
-	  pressure = LPS25HB_get_pressure();
-	  temperature = HTS221_get_temperature();
-	  humidity = HTS221_get_humidity();
-	  memset(formated_text, '\0', sizeof(formated_text));
-	  sprintf(formated_text, "%5.4f, %3.4f %2.2f %2.2f\r", pressure, temperature, humidity);
-	  USART2_PutBuffer((uint8_t*)formated_text, strlen(formated_text));
-	  LL_mDelay(10);
-  }
+	while (1) {
+		current_pressure = LPS25HB_get_pressure();
+		if (init_pressure_calculation) {
+		  current_temperature = HTS221_get_temperature();
+		  current_humidity = HTS221_get_humidity();
+		  process_pressure(current_pressure);
+
+//		  // Relative height calculation
+//		  float press_ratio = ref_avg_pressure / current_pressure;
+//		  float press_pw = powf(press_ratio, (1 / 5.257));
+//		  float relative_altitude2 = ((press_pw - 1) * (current_temperature + 273.15)) / 0.0065;
+
+		  float estimated_altitude = -(current_pressure*pow(10, 2) - PRESSURE_SEA_LEVEL_PA) / (DENSITY_AIR_KG_M3 * GRAVITY_EARTH_MPS2);
+
+		  memset(formated_text, '\0', sizeof(formated_text));
+		  sprintf(formated_text, "%4.2f, %2.1f, %2.0f, %3.2f, %3.2f\r", current_pressure, current_temperature, current_humidity, estimated_altitude, relative_altitude);
+		  USART2_PutBuffer((uint8_t*) formated_text, strlen(formated_text));
+		  LL_mDelay(25);
+		} else {
+			process_pressure(current_pressure);
+		}
+	}
 }
 
 
@@ -81,15 +129,13 @@ void SystemClock_Config(void)
 {
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 
-  if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_0)
-  {
-  Error_Handler();  
+  if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_0) {
+	  Error_Handler();
   }
   LL_RCC_HSI_Enable();
 
    /* Wait till HSI is ready */
-  while(LL_RCC_HSI_IsReady() != 1)
-  {
+  while(LL_RCC_HSI_IsReady() != 1) {
     
   }
   LL_RCC_HSI_SetCalibTrimming(16);

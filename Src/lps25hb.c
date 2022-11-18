@@ -3,7 +3,7 @@
 uint8_t LPS25HB_slave_address = LPS25HB_DEVICE_ADDRESS_0;
 
 void LPS25HB_read_byte_array(uint8_t* read_data, uint8_t reg_address, uint8_t size) {
-	i2c_master_read(read_data, size, reg_address, LPS25HB_slave_address, 0);
+	i2c_master_read(read_data, size, reg_address, LPS25HB_slave_address, 1);
 }
 
 uint8_t LPS25HB_read_byte(uint8_t reg_address) {
@@ -33,13 +33,13 @@ uint8_t LPS25HB_init(void) {
 
 	LL_mDelay(100);
 
-	uint8_t wai_value = LPS25HB_read_byte(LPS25HB_WHO_AM_I_ADDRES);
+	uint8_t wai_value = LPS25HB_read_byte(LPS25HB_WHO_AM_I_ADDRESS);
 
 	if(wai_value == LPS25HB_WHO_AM_I_VALUE) {
 		status = 1;
 	} else {
 		LPS25HB_slave_address = LPS25HB_DEVICE_ADDRESS_1;
-		wai_value = LPS25HB_read_byte(LPS25HB_WHO_AM_I_ADDRES);
+		wai_value = LPS25HB_read_byte(LPS25HB_WHO_AM_I_ADDRESS);
 		if(wai_value == LPS25HB_WHO_AM_I_VALUE) {
 			status = 1;
 		} else status = 0;
