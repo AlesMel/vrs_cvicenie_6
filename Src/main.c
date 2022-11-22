@@ -26,11 +26,11 @@
 #include "lis3mdltr.h"
 #include "lsm6ds0.h"
 #include "hts221.h"
-#include "lps25hb.h"
 #include "stdio.h"
 #include "string.h"
 #include "dma.h"
 #include "math.h"
+#include "../pressure/lps25hb.h"
 
 #define CHAR_BUFF_SIZE	30
 #define LPF_BAR_ALPHA 0.25f /* Filter coefficient */
@@ -53,6 +53,7 @@ float raw_pressure = 0.0f; /*rawPressure_Pa */
 
 float estimated_altitude = 0.0f;
 float relative_altitude = 0.0f;
+float reference_altitude = 0.0f;
 
 float data_rate = 0.0f;
 uint8_t data_count = 0;
@@ -74,46 +75,53 @@ void process_pressure(float pressure) {
 			ref_avg_pressure /= ((float) INITIAL_PRESSURE_SAMPLE_COUNT);
 			init_pressure_calculation = 1;
 		}
-	} else {
-		// times 1000 because of cm to m
-		relative_altitude = (-(current_pressure - ref_avg_pressure) / (DENSITY_AIR_KG_M3 * GRAVITY_EARTH_MPS2)) * 100;
 	}
+
+	// times 1000 because of cm to m
+	//relative_altitude = (-(current_pressure - ref_avg_pressure) / (DENSITY_AIR_KG_M3 * GRAVITY_EARTH_MPS2));
+}
+
+void calculate_altitude() {
+	// Hypsometric formula
+	// https://physics.stackexchange.com/questions/333475/how-to-calculate-altitude-from-current-temperature-and-pressure
+	float pressure_ratio = ref_avg_pressure / current_pressure; // reference pressure vs current pressure
+	float press_pw = powf(pressure_ratio, (1 / 5.257));
+	relative_altitude = ((press_pw - 1) * (current_temperature + 273.15)) / 0.0065;
 }
 
 int main(void) {
-  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
-  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-  SystemClock_Config();
+	SystemClock_Config();
 
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_DMA_Init();
-  MX_USART2_UART_Init();
+	MX_GPIO_Init();
+	MX_I2C1_Init();
+	MX_DMA_Init();
+	MX_USART2_UART_Init();
 
-  LPS25HB_init();
-  HTS221_init();
+	LPS25HB_init();
+	HTS221_init();
 
 	while (1) {
 		current_pressure = LPS25HB_get_pressure();
+		current_temperature = HTS221_get_temperature();
+
 		if (init_pressure_calculation) {
-		  current_temperature = HTS221_get_temperature();
-		  current_humidity = HTS221_get_humidity();
-		  process_pressure(current_pressure);
+			current_humidity = HTS221_get_humidity();
 
-//		  // Relative height calculation
-//		  float press_ratio = ref_avg_pressure / current_pressure;
-//		  float press_pw = powf(press_ratio, (1 / 5.257));
-//		  float relative_altitude2 = ((press_pw - 1) * (current_temperature + 273.15)) / 0.0065;
+			process_pressure(current_pressure);
 
-		  float estimated_altitude = -(current_pressure*pow(10, 2) - PRESSURE_SEA_LEVEL_PA) / (DENSITY_AIR_KG_M3 * GRAVITY_EARTH_MPS2);
+			calculate_altitude();
 
-		  memset(formated_text, '\0', sizeof(formated_text));
-		  sprintf(formated_text, "%4.2f, %2.1f, %2.0f, %3.2f, %3.2f\r", current_pressure, current_temperature, current_humidity, estimated_altitude, relative_altitude);
-		  USART2_PutBuffer((uint8_t*) formated_text, strlen(formated_text));
-		  LL_mDelay(25);
+			estimated_altitude = -(current_pressure * pow(10, 2) - PRESSURE_SEA_LEVEL_PA) / (DENSITY_AIR_KG_M3 * GRAVITY_EARTH_MPS2);
+
+			memset(formated_text, '\0', sizeof(formated_text));
+			sprintf(formated_text, "%4.2f, %2.1f, %2.0f, %3.2f, %3.2f\r", current_pressure, current_temperature, current_humidity, estimated_altitude, relative_altitude);
+			USART2_PutBuffer((uint8_t*) formated_text, strlen(formated_text));
+			LL_mDelay(25);
 		} else {
 			process_pressure(current_pressure);
 		}

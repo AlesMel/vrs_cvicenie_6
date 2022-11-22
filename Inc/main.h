@@ -69,6 +69,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void calculate_altitude();
 
 /* USER CODE END EFP */
 
